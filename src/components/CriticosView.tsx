@@ -17,6 +17,7 @@ interface CriticosViewProps {
   config: AppConfig;
 }
 
+
 export default function CriticosView({ data, config }: CriticosViewProps) {
   // 1. Identify Last Month
   const lastMonth = useMemo(() => {
