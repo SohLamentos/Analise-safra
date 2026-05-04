@@ -613,7 +613,8 @@ export default function SafraContinuity({ data, config, onViewTech }: SafraConti
     if (!aggregatedData) return [];
     
     return Array.from(aggregatedData.companyAgg.entries()).map(([name, s]) => {
-      const retention = (s.m1 + s.m2) > 0 ? (s.m2 / (s.m1 + s.m2)) : 1;
+      const completaramM3 = Math.max(0, s.m1 - s.perdaM1 - s.perdaM2);
+const retention = s.m1 > 0 ? completaramM3 / s.m1 : 0;
       return {
         name,
         ...s,
@@ -1088,9 +1089,9 @@ export default function SafraContinuity({ data, config, onViewTech }: SafraConti
            <div className="flex items-baseline gap-2">
               <span className="text-6xl font-black text-white">
                 {(() => {
-                  const num = currentTotals.sobreviventesM2;
-                  const den = currentTotals.iniciaram;
-                  return formatPercent(den > 0 ? num / den : 0);
+                  const num = currentTotals.completaramM3;
+const den = currentTotals.iniciaram;
+return formatPercent(den > 0 ? num / den : 0);
                 })()}
               </span>
               <span className="text-slate-500 font-bold uppercase text-[10px]">Taxa de Sobrevivência (Fluxo Safra)</span>
