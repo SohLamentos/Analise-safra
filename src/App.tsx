@@ -27,7 +27,7 @@ import {
   Shield
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import LZString from 'lz-string';
+
 import { 
   AppConfig, 
   TechnicianRecord
@@ -87,41 +87,43 @@ export default function App() {
   const [selectedType, setSelectedType] = useState<'TODAS' | 'SAFRA' | 'VETERANO' | 'VETERANO_EM_SAFRA'>('TODAS');
   const [selectedStatus, setSelectedStatus] = useState<'TODAS' | 'MAPEADA' | 'NAO_MAPEADA'>('TODAS');
 
-  // Load from LocalStorage
-  useEffect(() => {
-    const savedData = localStorage.getItem(STORAGE_KEY);
-    const savedConfig = localStorage.getItem(CONFIG_KEY);
-    
-    if (savedData) {
-      try {
-        let decompressed = savedData;
-        // Simple heuristic: if it doesn't look like JSON (starts with '['), try decompressing from UTF16
-        if (savedData.length > 0 && savedData[0] !== '[' && savedData[0] !== '{') {
-          const result = LZString.decompressFromUTF16(savedData);
-          if (result) decompressed = result;
-        }
-        
-        const parsed = JSON.parse(decompressed);
-        if (Array.isArray(parsed)) {
-          setData(parsed);
-        }
-      } catch (e) {
-        console.error("Error loading data", e);
-      }
-    }
+  // Load from Supabase
+useEffect(() => {
+  const loadData = async () => {
+    try {
+      const { data: savedState, error } = await supabase
+        .from('planilhas_importadas')
+        .select('*')
+        .eq('chave', 'APP_STATE')
+        .single();
 
-    if (savedConfig) {
-      try {
-        const parsedConfig = JSON.parse(savedConfig);
-        if (parsedConfig && typeof parsedConfig === 'object') {
-          // Merge with DEFAULT_CONFIG to ensure new keys exist
-          setConfig(prev => ({ ...prev, ...parsedConfig }));
-        }
-      } catch (e) {
-        console.error("Error loading config", e);
+      if (error) {
+        console.warn('Nenhum estado salvo encontrado.');
+        return;
       }
+
+      if (savedState?.dados) {
+        const parsed = savedState.dados;
+
+        if (parsed.data) {
+          setData(parsed.data);
+        }
+
+        if (parsed.config) {
+          setConfig((prev) => ({
+            ...prev,
+            ...parsed.config,
+          }));
+        }
+      }
+    } catch (e) {
+      console.error('Erro ao carregar Supabase:', e);
     }
-  }, []);
+  };
+
+  loadData();
+}, []);
+  
 
   // Filtered Data based on Global Filters
   const filteredData = useMemo(() => {
@@ -153,24 +155,37 @@ export default function App() {
     return result;
   }, [data, selectedRegion, selectedType, selectedStatus]);
 
-  // Save to LocalStorage
-  useEffect(() => {
+  // Save to Supabase
+useEffect(() => {
+  const saveData = async () => {
     try {
-      const stringified = JSON.stringify(data);
-      const compressed = LZString.compressToUTF16(stringified);
-      localStorage.setItem(STORAGE_KEY, compressed);
-    } catch (error) {
-      console.error("Erro ao salvar dados no localStorage:", error);
-    }
-  }, [data]);
+      const payload = {
+        data,
+        config,
+      };
 
-  useEffect(() => {
-    try {
-      localStorage.setItem(CONFIG_KEY, JSON.stringify(config));
+      const { error } = await supabase
+        .from('planilhas_importadas')
+        .upsert({
+          chave: 'APP_STATE',
+          nome_arquivo: 'Painel Safra',
+          tipo_planilha: 'APP_STATE',
+          dados: payload,
+          atualizado_em: new Date().toISOString(),
+        });
+
+      if (error) {
+        console.error('Erro Supabase:', error);
+      }
     } catch (error) {
-      console.error("Erro ao salvar configuração no localStorage:", error);
+      console.error('Erro ao salvar:', error);
     }
-  }, [config]);
+  };
+
+  if (data.length > 0) {
+    saveData();
+  }
+}, [data, config]);
 
   const exportBackup = () => {
     const backup = {
