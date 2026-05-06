@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import { supabase } from './lib/supabase';
 import React, { useState, useEffect, useMemo } from 'react';
 import { 
   LayoutDashboard, 
